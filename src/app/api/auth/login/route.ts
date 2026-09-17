@@ -3,8 +3,19 @@ import { prisma } from '@/lib/prisma'
 import { signToken } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
 
+async function ensureSeeded() {
+  const count = await prisma.user.count()
+  if (count > 0) return
+
+  console.log('Auto-seeding database on first login...')
+  const { GET } = await import('@/app/api/seed/route')
+  await GET(new NextRequest('http://localhost/api/seed'))
+}
+
 export async function POST(request: NextRequest) {
   try {
+    await ensureSeeded()
+
     const { email, password } = await request.json()
 
     if (!email || !password) {
