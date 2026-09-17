@@ -1,0 +1,385 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  role          String    @default("TEACHER")
+  phone         String?
+  avatar        String?
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  teacherId     String?   @unique
+  parentId      String?   @unique
+  teacher       Teacher?  @relation(fields: [teacherId], references: [id])
+  parent        Parent?   @relation(fields: [parentId], references: [id])
+  auditLogs     AuditLog[]
+  announcements Announcement[]
+  attendanceRecords Attendance[]
+  feePayments  FeePayment[]
+
+  @@index([role])
+}
+
+model School {
+  id              String   @id @default(cuid())
+  name            String
+  logo            String?
+  address         String?
+  phone           String?
+  email           String?
+  motto           String?
+  registrationNo  String?
+  headTeacherName String?
+  stamp           String?
+  currentYear     String?
+  currentTerm     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  academicYears   AcademicYear[]
+  classes         Class[]
+  subjects        Subject[]
+  settings        SchoolSetting[]
+}
+
+model SchoolSetting {
+  id           String  @id @default(cuid())
+  schoolId     String
+  key          String
+  value        String?
+  school       School  @relation(fields: [schoolId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([schoolId, key])
+}
+
+model AcademicYear {
+  id          String   @id @default(cuid())
+  schoolId    String
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  isCurrent   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id])
+  terms       Term[]
+  classes     Class[]
+  pupils      Pupil[]
+  marks       Mark[]
+  fees        FeeStructure[]
+  payments    FeePayment[]
+  promotions  Promotion[]
+
+  @@unique([schoolId, name])
+}
+
+model Term {
+  id             String        @id @default(cuid())
+  academicYearId String
+  name           String
+  startDate      DateTime
+  endDate        DateTime
+  isCurrent      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  academicYear   AcademicYear  @relation(fields: [academicYearId], references: [id])
+  marks          Mark[]
+  fees           FeeStructure[]
+  payments       FeePayment[]
+  exams          Examination[]
+
+  @@unique([academicYearId, name])
+}
+
+model Class {
+  id             String         @id @default(cuid())
+  schoolId       String
+  academicYearId String
+  name           String
+  stream         String?
+  classTeacherId String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  school         School         @relation(fields: [schoolId], references: [id])
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
+  pupils         Pupil[]
+  attendance     Attendance[]
+  subjects       ClassSubject[]
+  marks          Mark[]
+  classTeacher   Teacher?       @relation("ClassTeacher", fields: [classTeacherId], references: [id])
+
+  @@unique([schoolId, academicYearId, name, stream])
+}
+
+model Subject {
+  id         String        @id @default(cuid())
+  schoolId   String
+  name       String
+  code       String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  school     School        @relation(fields: [schoolId], references: [id])
+  marks      Mark[]
+  classSubjects ClassSubject[]
+
+  @@unique([schoolId, name])
+}
+
+model ClassSubject {
+  id        String  @id @default(cuid())
+  classId   String
+  subjectId String
+  teacherId String?
+  class     Class   @relation(fields: [classId], references: [id])
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  teacher   Teacher? @relation(fields: [teacherId], references: [id])
+
+  @@unique([classId, subjectId])
+}
+
+model Teacher {
+  id             String         @id @default(cuid())
+  staffNumber    String         @unique
+  firstName      String
+  lastName       String
+  gender         String
+  phone          String?
+  email          String?
+  address        String?
+  qualification  String?
+  employmentDate DateTime?
+  employmentType String         @default("PERMANENT")
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User?
+  classes        ClassSubject[]
+  teachingClasses Class[]       @relation("ClassTeacher")
+
+  @@index([staffNumber])
+}
+
+model Parent {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  phone       String
+  email       String?
+  address     String?
+  occupation  String?
+  relationship String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?
+  pupils      PupilParent[]
+
+  @@index([phone])
+}
+
+model Pupil {
+  id                String         @id @default(cuid())
+  admissionNumber   String         @unique
+  firstName         String
+  middleName        String?
+  lastName          String
+  gender            String
+  dateOfBirth       DateTime
+  photo             String?
+  classId           String
+  previousSchool    String?
+  admissionDate     DateTime       @default(now())
+  status            String         @default("ACTIVE")
+  emergencyContact  String?
+  emergencyPhone    String?
+  address           String?
+  medicalNotes      String?
+  religion          String?
+  nationalId        String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  class             Class          @relation(fields: [classId], references: [id])
+  academicYearId    String
+  academicYear      AcademicYear   @relation(fields: [academicYearId], references: [id])
+  parents           PupilParent[]
+  attendance        Attendance[]
+  marks             Mark[]
+  promotions        Promotion[]
+  feePayments       FeePayment[]
+
+  @@index([admissionNumber])
+  @@index([classId])
+  @@index([status])
+}
+
+model PupilParent {
+  id       String @id @default(cuid())
+  pupilId  String
+  parentId String
+  pupil    Pupil  @relation(fields: [pupilId], references: [id])
+  parent   Parent @relation(fields: [parentId], references: [id])
+
+  @@unique([pupilId, parentId])
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  pupilId     String
+  classId     String
+  date        DateTime
+  status      String
+  remarks     String?
+  markedById  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  pupil       Pupil    @relation(fields: [pupilId], references: [id])
+  class       Class    @relation(fields: [classId], references: [id])
+  markedBy    User     @relation(fields: [markedById], references: [id])
+
+  @@unique([pupilId, classId, date])
+  @@index([date])
+  @@index([classId, date])
+}
+
+model FeeStructure {
+  id             String      @id @default(cuid())
+  academicYearId String
+  termId         String?
+  className      String
+  amount         Float
+  description    String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  term           Term?        @relation(fields: [termId], references: [id])
+
+  @@unique([academicYearId, termId, className])
+}
+
+model FeePayment {
+  id             String      @id @default(cuid())
+  pupilId        String
+  academicYearId String
+  termId         String
+  amount         Float
+  paymentMethod  String
+  receiptNumber  String      @unique
+  reference      String?
+  receivedById   String
+  notes          String?
+  paymentDate    DateTime    @default(now())
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  pupil          Pupil       @relation(fields: [pupilId], references: [id])
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  term           Term         @relation(fields: [termId], references: [id])
+  receivedBy     User         @relation(fields: [receivedById], references: [id])
+
+  @@index([pupilId])
+  @@index([receiptNumber])
+  @@index([paymentDate])
+}
+
+model Examination {
+  id             String   @id @default(cuid())
+  name           String
+  termId         String
+  academicYearId String
+  maxMarks       Float    @default(100)
+  weight         Float    @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  term           Term     @relation(fields: [termId], references: [id])
+  marks          Mark[]
+
+  @@unique([termId, name])
+}
+
+model GradingSystem {
+  id        String @id @default(cuid())
+  minScore  Float
+  maxScore  Float
+  grade     String
+  remark    String
+  createdAt DateTime @default(now())
+}
+
+model Mark {
+  id             String      @id @default(cuid())
+  pupilId        String
+  classId        String
+  subjectId      String
+  examinationId  String?
+  assessmentType String?
+  termId         String
+  academicYearId String
+  score          Float
+  maxScore       Float    @default(100)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  pupil          Pupil       @relation(fields: [pupilId], references: [id])
+  class          Class       @relation(fields: [classId], references: [id])
+  subject        Subject     @relation(fields: [subjectId], references: [id])
+  examination    Examination? @relation(fields: [examinationId], references: [id])
+  term           Term        @relation(fields: [termId], references: [id])
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@unique([pupilId, subjectId, examinationId, termId])
+  @@index([pupilId])
+  @@index([classId, subjectId])
+}
+
+model Promotion {
+  id             String   @id @default(cuid())
+  pupilId        String
+  fromClass      String
+  toClass        String
+  academicYearId String
+  status         String
+  remarks        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  pupil          Pupil       @relation(fields: [pupilId], references: [id])
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  priority  String   @default("NORMAL")
+  audience  String   @default("ALL")
+  startDate DateTime?
+  endDate   DateTime?
+  createdById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [createdById], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  entity     String
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
