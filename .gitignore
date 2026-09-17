@@ -36,3 +36,5 @@ public/uploads/*
 
 # prisma
 prisma/migrations/
+
+.vercel
